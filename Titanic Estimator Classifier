@@ -1,0 +1,1110 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "# Title"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "This demo will take you through the following steps:\n",
+    "- Query data from Big Query using datalab.bigquery\n",
+    "- Create Pandas dataframe and generate descriptive statistics\n",
+    "- Visualize your data using Matplotlib\n",
+    "- Create first heuristic as a benchmark"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "#BUCKET = 'erwinh-ml-demo'\n",
+    "#PROJECT = 'erwinh-mldemo'\n",
+    "#REGION = 'us-central1'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "#import os\n",
+    "#os.environ['BUCKET'] = BUCKET\n",
+    "#os.environ['PROJECT'] = PROJECT\n",
+    "#os.environ['REGION'] = REGION"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "#gcs_data_dir = 'gs://{0}/data/financialtimeseries/'.format(BUCKET)\n",
+    "#gcs_model_dir = 'gs://{0}/ml-models/financialtimeseries/'.format(BUCKET)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "# Libraries"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "The ones that we need for this demo are:\n",
+    "- BigQuery\n",
+    "- Seaborn\n",
+    "- Pandas\n",
+    "- Matplotlib\n",
+    "- Sys"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 35,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "#import the needed packages. \n",
+    "\n",
+    "#BigQuery package\n",
+    "import google.datalab.bigquery as bq\n",
+    "\n",
+    "#Data Libraries \n",
+    "#import seaborn as sns\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import shutil\n",
+    "import tensorflow as tf\n",
+    "\n",
+    "import sys\n",
+    "\n",
+    "%matplotlib inline\n",
+    "tf.logging.set_verbosity(tf.logging.ERROR)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "# Fetch Data from BigQuery"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we need to get the data from Big Query. We do this using the BQ library that lets us run queries using the BQ API. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# General query for the training set\n",
+    "query =\"\"\"\n",
+    "SELECT\n",
+    "  Survived,\n",
+    "  Pclass, \n",
+    "  Age, \n",
+    "  Fare \n",
+    "FROM\n",
+    "  Titanic.Train\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# General query for the test set\n",
+    "\n",
+    "query2 =\"\"\"\n",
+    "SELECT\n",
+    "  Pclass, \n",
+    "  Age, \n",
+    "  Fare \n",
+    "FROM\n",
+    "  Titanic.Test\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Survived</th>\n",
+       "      <th>Pclass</th>\n",
+       "      <th>Age</th>\n",
+       "      <th>Fare</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>40.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>38.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>39.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Survived  Pclass   Age  Fare\n",
+       "0         0       1   NaN   0.0\n",
+       "1         0       1   NaN   0.0\n",
+       "2         0       1  40.0   0.0\n",
+       "3         0       1  38.0   0.0\n",
+       "4         0       1  39.0   0.0"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#Here we execute the query and create a Pandas Dataframe\n",
+    "titanic_train = bq.Query(query).execute().result().to_dataframe()\n",
+    "\n",
+    "#Lets fetch 5 records \n",
+    "titanic_train.head(5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Survived</th>\n",
+       "      <th>Pclass</th>\n",
+       "      <th>Age</th>\n",
+       "      <th>Fare</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>count</th>\n",
+       "      <td>891.000000</td>\n",
+       "      <td>891.000000</td>\n",
+       "      <td>714.000000</td>\n",
+       "      <td>891.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>mean</th>\n",
+       "      <td>0.383838</td>\n",
+       "      <td>2.308642</td>\n",
+       "      <td>29.699118</td>\n",
+       "      <td>32.204208</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>std</th>\n",
+       "      <td>0.486592</td>\n",
+       "      <td>0.836071</td>\n",
+       "      <td>14.526497</td>\n",
+       "      <td>49.693429</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>min</th>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.420000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>25%</th>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>2.000000</td>\n",
+       "      <td>20.125000</td>\n",
+       "      <td>7.910400</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>50%</th>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>3.000000</td>\n",
+       "      <td>28.000000</td>\n",
+       "      <td>14.454200</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>75%</th>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>3.000000</td>\n",
+       "      <td>38.000000</td>\n",
+       "      <td>31.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>max</th>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>3.000000</td>\n",
+       "      <td>80.000000</td>\n",
+       "      <td>512.329200</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "         Survived      Pclass         Age        Fare\n",
+       "count  891.000000  891.000000  714.000000  891.000000\n",
+       "mean     0.383838    2.308642   29.699118   32.204208\n",
+       "std      0.486592    0.836071   14.526497   49.693429\n",
+       "min      0.000000    1.000000    0.420000    0.000000\n",
+       "25%      0.000000    2.000000   20.125000    7.910400\n",
+       "50%      0.000000    3.000000   28.000000   14.454200\n",
+       "75%      1.000000    3.000000   38.000000   31.000000\n",
+       "max      1.000000    3.000000   80.000000  512.329200"
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# We can then use the Pandas dataframe to explore the data\n",
+    "titanic_train.describe()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Pclass</th>\n",
+       "      <th>Age</th>\n",
+       "      <th>Fare</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1</td>\n",
+       "      <td>59.0</td>\n",
+       "      <td>51.4792</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>51.0</td>\n",
+       "      <td>39.4000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1</td>\n",
+       "      <td>67.0</td>\n",
+       "      <td>221.7792</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1</td>\n",
+       "      <td>76.0</td>\n",
+       "      <td>78.8500</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>1</td>\n",
+       "      <td>58.0</td>\n",
+       "      <td>512.3292</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Pclass   Age      Fare\n",
+       "0       1  59.0   51.4792\n",
+       "1       1  51.0   39.4000\n",
+       "2       1  67.0  221.7792\n",
+       "3       1  76.0   78.8500\n",
+       "4       1  58.0  512.3292"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# We do the same for the test set\n",
+    "titanic_test = bq.Query(query2).execute().result().to_dataframe()\n",
+    "titanic_test.head(5)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "# Save to data to csv"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we want to save the data to a csv file. This is a best practice for if we have 'Big Data'. This scales better and we can use the CSV files in our input pipeline that we are building later on. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# We save the training set and test set as a csv\n",
+    "titanic_train.to_csv('data/train-data.csv', header=False, index_label=False, index=False)\n",
+    "titanic_test.to_csv('data/test-data.csv', header=False, index_label=False, index=False)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "test-data.csv\n",
+      "train-data.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%bash\n",
+    "ls data/."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "training instance:891\n",
+      "test instance:418\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Now lets check if the csv are created correctly. \n",
+    "df_train = pd.read_csv('data/train-data.csv', header=None)\n",
+    "df_test = pd.read_csv('data/test-data.csv', header=None)\n",
+    "\n",
+    "print(\"training instance:{}\".format(len(df_train)))\n",
+    "print(\"test instance:{}\".format(len(df_test)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "deletable": true,
+    "editable": true
+   },
+   "source": [
+    "# Upload datasets to Google Cloud Storage (GCS)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we are going to store our CSV files in a Google Cloud Storage Bucket. This way we can scale easily and re-use the data whenever we want to. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Copying file://data/test-data.csv [Content-Type=text/csv]...\n",
+      "Copying file://data/train-data.csv [Content-Type=text/csv]...\n",
+      "/ [0/2 files][    0.0 B/ 17.4 KiB]   0% Done                                    \r",
+      "/ [0/2 files][    0.0 B/ 17.4 KiB]   0% Done                                    \r",
+      "/ [1/2 files][ 17.4 KiB/ 17.4 KiB]  99% Done                                    \r",
+      "/ [2/2 files][ 17.4 KiB/ 17.4 KiB] 100% Done                                    \r\n",
+      "Operation completed over 2 objects/17.4 KiB.                                     \n"
+     ]
+    }
+   ],
+   "source": [
+    "# Migrate data to GCS\n",
+    "%%bash \n",
+    "gsutil -m cp data/*-data.csv gs://erwinh-ml-demo/data/titanic"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1.5.0\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Lets first check what Tensorflow version we are using. \n",
+    "print(tf.__version__)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# We can store the path for the data in a variable\n",
+    "file_path = \"gs://erwinh-ml-demo/data/titanic/train-data.csv\"\n",
+    "file_test = \"gs://erwinh-ml-demo/data/titanic/test-data.csv\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Setup metadata"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We need to define the metadata that we are going to use for training our ML model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Header: ['Survived', 'Pclass', 'Age', 'Fare']\n",
+      "Numeric Features: ['Pclass', 'Age', 'Fare']\n",
+      "Categorical Features: []\n",
+      "Target: Survived - labels: [1, 0]\n",
+      "Unused Features: set([])\n"
+     ]
+    }
+   ],
+   "source": [
+    "#Define header names\n",
+    "HEADER = ['Survived',\n",
+    "           'Pclass', \n",
+    "           'Age', \n",
+    "           'Fare']\n",
+    "\n",
+    "#Setup default values for missing\n",
+    "DEFAULTS = [[0], [2.0], [29.0], [32.0]]\n",
+    "\n",
+    "NUMERIC_FEATURE_NAMES = ['Pclass', \n",
+    "                         'Age', \n",
+    "                         'Fare']\n",
+    "\n",
+    "CATEGORICAL_FEATURE_NAMES = []\n",
+    "\n",
+    "#Variable with all the feature names\n",
+    "FEATURE_NAMES = NUMERIC_FEATURE_NAMES + CATEGORICAL_FEATURE_NAMES\n",
+    "\n",
+    "#Set Target\n",
+    "TARGET_NAME = 'Survived'\n",
+    "\n",
+    "TARGET_VALUES = [1,0]\n",
+    "\n",
+    "#Unused features\n",
+    "UNUSED_FEATURE_NAMES = set(HEADER) - set(FEATURE_NAMES) - set([TARGET_NAME])\n",
+    "\n",
+    "#Print features + unused features\n",
+    "print(\"Header: {}\".format(HEADER))\n",
+    "print(\"Numeric Features: {}\".format(NUMERIC_FEATURE_NAMES))\n",
+    "print(\"Categorical Features: {}\".format(CATEGORICAL_FEATURE_NAMES))\n",
+    "print(\"Target: {} - labels: {}\".format(TARGET_NAME, TARGET_VALUES))\n",
+    "print(\"Unused Features: {}\".format(UNUSED_FEATURE_NAMES))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Setup input function"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We use a inpute function that we can re-use for different models and different datasets. For this we use the Dataset API. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "def input_fn(file_path, perform_shuffle=False, repeat_count=1):\n",
+    "  def decode_csv(line):\n",
+    "    # Convert CSV records to tensors. Each column maps to one tensor.\n",
+    "    parsed_line = tf.decode_csv(line, DEFAULTS)\n",
+    "    label = parsed_line[0]\n",
+    "    del parsed_line[0]\n",
+    "    features = parsed_line\n",
+    "    d = dict(zip(FEATURE_NAMES, features)), label\n",
+    "    return d\n",
+    "  \n",
+    "  dataset = (tf.data.TextLineDataset(file_path)\n",
+    "            .skip(1)\n",
+    "            .map(decode_csv))\n",
+    "  \n",
+    "  if perform_shuffle:\n",
+    "        # Randomizes input using a window of 256 elements (read into memory)\n",
+    "        dataset = dataset.shuffle(buffer_size=256)\n",
+    "  dataset = dataset.repeat(repeat_count)  # Repeats dataset this # times\n",
+    "  dataset = dataset.batch(32)  # Batch size to use\n",
+    "  iterator = dataset.make_one_shot_iterator()\n",
+    "  batch_features, batch_labels = iterator.get_next()\n",
+    "  return batch_features, batch_labels\n",
+    "  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "({'Fare': array([ 39.6   ,  53.1   ,  15.5   ,  10.5   ,  73.5   , 263.    ,\n",
+      "         7.75  ,  21.    ,  31.    ,   7.8542,  13.    ,   7.75  ,\n",
+      "        13.    ,  18.    ,  11.5   ,  30.5   ,  32.3208,  26.55  ,\n",
+      "        26.55  ,  15.5   ,  26.55  ,  13.    ,  10.5   ,   7.75  ,\n",
+      "         0.    ,  25.925 ,  29.125 ,  24.    ,  35.5   ,   7.25  ,\n",
+      "        10.5   ,   7.7292], dtype=float32), 'Age': array([29. , 37. , 40. , 66. , 21. , 19. , 31. , 27. , 29. , 14. , 30. ,\n",
+      "       45. , 25. , 31. , 21. , 55. , 61. , 29. , 60. , 29. , 56. , 39. ,\n",
+      "       36. , 70.5, 39. , 29. ,  2. , 30. , 45. , 29. , 28. , 29. ],\n",
+      "      dtype=float32), 'Pclass': array([1., 1., 3., 2., 2., 1., 3., 2., 1., 3., 2., 3., 2., 3., 2., 1., 1.,\n",
+      "       1., 1., 3., 1., 2., 2., 3., 1., 1., 3., 2., 1., 3., 2., 3.],\n",
+      "      dtype=float32)}, array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n",
+      "       0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int32))\n"
+     ]
+    }
+   ],
+   "source": [
+    "next_batch = input_fn(file_path, True) # Will return 32 random elements\n",
+    "\n",
+    "# Now let's try it out, retrieving and printing one batch of data.\n",
+    "# Although this code looks strange, you don't need to understand\n",
+    "# the details.\n",
+    "with tf.Session() as sess:\n",
+    "    first_batch = sess.run(next_batch)\n",
+    "print(first_batch)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "def create_feature_columns():\n",
+    "  \n",
+    "  Pclass=tf.feature_column.numeric_column('Pclass')\n",
+    "  Age=tf.feature_column.numeric_column('Age')\n",
+    "  Fare=tf.feature_column.numeric_column('Fare')\n",
+    "\n",
+    "  features_columns = [Pclass, Age, Fare]\n",
+    "  \n",
+    "  return features_columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "feature_columns = create_feature_columns()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Build Machine Learning Model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now its time to build a Machine Learning model. Here we will initiate our estimator and train it using the training dataset that we have created earlier. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# Here we specify some of the metadata that we are using in our estimator model\n",
+    "num_hidden_units =[512, 256, 128] \n",
+    "number_classes = 2\n",
+    "directory = \"./Checkpoints/checkpoints_tutorial17-2/\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Using default config.\n",
+      "INFO:tensorflow:Using config: {'_save_checkpoints_secs': 600, '_session_config': None, '_keep_checkpoint_max': 5, '_task_type': 'worker', '_is_chief': True, '_cluster_spec': <tensorflow.python.training.server_lib.ClusterSpec object at 0x7f3707b0c990>, '_save_checkpoints_steps': None, '_keep_checkpoint_every_n_hours': 10000, '_service': None, '_num_ps_replicas': 0, '_tf_random_seed': None, '_master': '', '_num_worker_replicas': 1, '_task_id': 0, '_log_step_count_steps': 100, '_model_dir': './Checkpoints/checkpoints_tutorial17-2/', '_save_summary_steps': 100}\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Now we will initate our DNNClassifier\n",
+    "classifier = tf.estimator.DNNClassifier(\n",
+    "    feature_columns=feature_columns,\n",
+    "    hidden_units=num_hidden_units,\n",
+    "    n_classes = number_classes, \n",
+    "    model_dir=directory)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Create CheckpointSaverHook.\n",
+      "INFO:tensorflow:Restoring parameters from ./Checkpoints/checkpoints_tutorial17-2/model.ckpt-2782\n",
+      "INFO:tensorflow:Saving checkpoints for 2783 into ./Checkpoints/checkpoints_tutorial17-2/model.ckpt.\n",
+      "INFO:tensorflow:loss = 23.453457, step = 2783\n",
+      "INFO:tensorflow:global_step/sec: 162.66\n",
+      "INFO:tensorflow:loss = 25.080727, step = 2883 (0.616 sec)\n",
+      "INFO:tensorflow:global_step/sec: 175.399\n",
+      "INFO:tensorflow:loss = 15.017276, step = 2983 (0.570 sec)\n",
+      "INFO:tensorflow:global_step/sec: 171.328\n",
+      "INFO:tensorflow:loss = 23.791424, step = 3083 (0.584 sec)\n",
+      "INFO:tensorflow:global_step/sec: 159.774\n",
+      "INFO:tensorflow:loss = 10.750647, step = 3183 (0.626 sec)\n",
+      "INFO:tensorflow:global_step/sec: 162.342\n",
+      "INFO:tensorflow:loss = 24.38977, step = 3283 (0.616 sec)\n",
+      "INFO:tensorflow:global_step/sec: 155.851\n",
+      "INFO:tensorflow:loss = 19.440926, step = 3383 (0.642 sec)\n",
+      "INFO:tensorflow:global_step/sec: 155.546\n",
+      "INFO:tensorflow:loss = 18.085102, step = 3483 (0.644 sec)\n",
+      "INFO:tensorflow:global_step/sec: 159.669\n",
+      "INFO:tensorflow:loss = 25.247345, step = 3583 (0.625 sec)\n",
+      "INFO:tensorflow:global_step/sec: 153.507\n",
+      "INFO:tensorflow:loss = 9.302046, step = 3683 (0.651 sec)\n",
+      "INFO:tensorflow:global_step/sec: 161.187\n",
+      "INFO:tensorflow:loss = 19.233833, step = 3783 (0.620 sec)\n",
+      "INFO:tensorflow:global_step/sec: 151.74\n",
+      "INFO:tensorflow:loss = 20.607845, step = 3883 (0.660 sec)\n",
+      "INFO:tensorflow:global_step/sec: 162.123\n",
+      "INFO:tensorflow:loss = 16.199879, step = 3983 (0.616 sec)\n",
+      "INFO:tensorflow:global_step/sec: 150.483\n",
+      "INFO:tensorflow:loss = 23.783382, step = 4083 (0.665 sec)\n",
+      "INFO:tensorflow:global_step/sec: 157.127\n",
+      "INFO:tensorflow:loss = 6.864545, step = 4183 (0.637 sec)\n",
+      "INFO:tensorflow:global_step/sec: 159.227\n",
+      "INFO:tensorflow:loss = 22.59959, step = 4283 (0.627 sec)\n",
+      "INFO:tensorflow:global_step/sec: 150.507\n",
+      "INFO:tensorflow:loss = 18.947464, step = 4383 (0.664 sec)\n",
+      "INFO:tensorflow:global_step/sec: 152.189\n",
+      "INFO:tensorflow:loss = 16.445713, step = 4483 (0.657 sec)\n",
+      "INFO:tensorflow:global_step/sec: 154.687\n",
+      "INFO:tensorflow:loss = 22.59298, step = 4583 (0.647 sec)\n",
+      "INFO:tensorflow:global_step/sec: 159.782\n",
+      "INFO:tensorflow:loss = 11.401776, step = 4683 (0.625 sec)\n",
+      "INFO:tensorflow:global_step/sec: 163.905\n",
+      "INFO:tensorflow:loss = 19.992195, step = 4783 (0.610 sec)\n",
+      "INFO:tensorflow:global_step/sec: 156.986\n",
+      "INFO:tensorflow:loss = 11.8413105, step = 4883 (0.638 sec)\n",
+      "INFO:tensorflow:global_step/sec: 154.478\n",
+      "INFO:tensorflow:loss = 19.42731, step = 4983 (0.647 sec)\n",
+      "INFO:tensorflow:global_step/sec: 152.275\n",
+      "INFO:tensorflow:loss = 26.35579, step = 5083 (0.657 sec)\n",
+      "INFO:tensorflow:global_step/sec: 158.147\n",
+      "INFO:tensorflow:loss = 9.578805, step = 5183 (0.632 sec)\n",
+      "INFO:tensorflow:global_step/sec: 171.422\n",
+      "INFO:tensorflow:loss = 18.493402, step = 5283 (0.583 sec)\n",
+      "INFO:tensorflow:global_step/sec: 155.765\n",
+      "INFO:tensorflow:loss = 13.596743, step = 5383 (0.643 sec)\n",
+      "INFO:tensorflow:global_step/sec: 161.41\n",
+      "INFO:tensorflow:loss = 19.482944, step = 5483 (0.619 sec)\n",
+      "INFO:tensorflow:Saving checkpoints for 5564 into ./Checkpoints/checkpoints_tutorial17-2/model.ckpt.\n",
+      "INFO:tensorflow:Loss for final step: 3.8431282.\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<tensorflow.python.estimator.canned.dnn.DNNClassifier at 0x7f3707dba5d0>"
+      ]
+     },
+     "execution_count": 30,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "classifier.train(\n",
+    "    input_fn=lambda: input_fn(file_path, True, 100))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Now we need to check how our model performs on our test dataset. "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "For this we will create a new input function."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "metadata": {
+    "collapsed": true,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [],
+   "source": [
+    "# Test input function \n",
+    "def test_input_fn(file_path, perform_shuffle=False, repeat_count=1):\n",
+    "  def decode_csv(line):\n",
+    "    # Convert CSV records to tensors. Each column maps to one tensor.\n",
+    "    parsed_line = tf.decode_csv(line, DEFAULTS)\n",
+    "    label = parsed_line[0]\n",
+    "    del parsed_line[0]\n",
+    "    features = parsed_line\n",
+    "    d = dict(zip(FEATURE_NAMES, features)), label\n",
+    "    return d\n",
+    "  \n",
+    "  dataset = (tf.data.TextLineDataset(file_path)\n",
+    "            .skip(1)\n",
+    "            .map(decode_csv))\n",
+    "  \n",
+    "  if perform_shuffle:\n",
+    "        # Randomizes input using a window of 256 elements (read into memory)\n",
+    "        dataset = dataset.shuffle(buffer_size=256)\n",
+    "  dataset = dataset.repeat(repeat_count)  # Repeats dataset this # times\n",
+    "  dataset = dataset.batch(32)  # Batch size to use\n",
+    "  iterator = dataset.make_one_shot_iterator()\n",
+    "  batch_features, batch_labels = iterator.get_next()\n",
+    "  return batch_features, batch_labels"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {
+    "collapsed": false,
+    "deletable": true,
+    "editable": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Starting evaluation at 2018-03-11-18:09:29\n",
+      "INFO:tensorflow:Restoring parameters from ./Checkpoints/checkpoints_tutorial17-2/model.ckpt-5564\n",
+      "INFO:tensorflow:Finished evaluation at 2018-03-11-18:09:30\n",
+      "INFO:tensorflow:Saving dict for global step 5564: accuracy = 0.7089888, accuracy_baseline = 0.61573035, auc = 0.7325362, auc_precision_recall = 0.6228764, average_loss = 0.6157158, global_step = 5564, label/mean = 0.38426965, loss = 19.570967, prediction/mean = 0.49716985\n",
+      "Evaluation results\n",
+      "   loss, was: 19.5709667206\n",
+      "   accuracy_baseline, was: 0.615730345249\n",
+      "   global_step, was: 5564\n",
+      "   auc, was: 0.732536196709\n",
+      "   prediction/mean, was: 0.497169852257\n",
+      "   label/mean, was: 0.384269654751\n",
+      "   average_loss, was: 0.615715801716\n",
+      "   auc_precision_recall, was: 0.622876405716\n",
+      "   accuracy, was: 0.708988785744\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Evaluate our model using the examples contained in FILE_TEST\n",
+    "# Return value will contain evaluation_metrics such as: loss & average_loss\n",
+    "evaluate_result = classifier.evaluate(\n",
+    "    input_fn=lambda: input_fn(file_path, False, 4))\n",
+    "print(\"Evaluation results\")\n",
+    "for key in evaluate_result:\n",
+    "    print(\"   {}, was: {}\".format(key, evaluate_result[key]))"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.14"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
